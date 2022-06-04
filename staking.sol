@@ -320,6 +320,41 @@ contract StakeNFT {
         return _StakedItem[stakingId];
     }
 
+     //function to check NFT stake duration status 
+    function checkStake(uint stakingId, address staker)public returns (Staking memory) {
+        Staking storage staking = _StakedItem[stakingId];
+        
+        require(staker == msg.sender,"You cannot check this staking as it is not listed under this address");
+        require(staking.status == StakingStatus.Active,"Staking is not active or claimed");
+        if (block.timestamp >= staking.releaseTime) {
+            staking.status = StakingStatus.Claimable;
+        }
+
+        emit tokenClaimStatus(staking.token, staking.tokenId, staking.status, staking.StakingId);
+        return _StakedItem[stakingId];
+
+ 
+    }
+
+    //function to claim reward token if NFT stake duration is completed
+    function claimStake(uint stakingId) public returns(Staking memory){
+        Staking storage staking = _StakedItem[stakingId];
+        
+        require(staking.staker == msg.sender,"You cannot cancel this staking as it is not listed under this address");
+        require(staking.status == StakingStatus.Claimable,"Your reward is either not claimable yet or has been claimed");
+
+        uint amount = rate * (block.timestamp - staking.releaseTime) / 25 days;
+
+        IERC20(REWARDToken).transfer(msg.sender, amount);
+
+        staking.status = StakingStatus.Claimed;
+        IERC721(staking.token).transferFrom(address(this), msg.sender, staking.tokenId);
+
+        emit tokenClaimComplete(staking.token, staking.tokenId, staking.status, staking.StakingId);
+        
+        return _StakedItem[stakingId];
+    }
+
 
     function setNewAdmin(address newAdd) external onlyAdmin{
         admin = newAdd;
