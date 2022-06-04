@@ -268,6 +268,21 @@ contract StakeNFT {
         admin = msg.sender;
     }
 
+    enum StakingStatus {Active, Claimable, Claimed, Cancelled}
+
+    //structs
+    struct Staking {
+        address staker;    
+        address token;
+        uint tokenId;
+        uint releaseTime;
+        StakingStatus status;
+        uint StakingId;
+    }
+
+    //mapping
+    mapping(uint => Staking) private _StakedItem; 
+
 
     //function to call another function
     function callStakeToken(address token, uint _tokenID) public {
