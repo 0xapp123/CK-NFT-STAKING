@@ -355,6 +355,42 @@ contract StakeNFT {
         return _StakedItem[stakingId];
     }
 
+    //function to cancel NFT stake
+    function cancelStake(uint stakingId) public returns (Staking memory) {
+        Staking storage staking = _StakedItem[stakingId];
+        require(staking.staker == msg.sender,"You cannot cancel this staking as it is not listed under this address");
+        require(staking.status == StakingStatus.Active,"Staking is either not active (Cancalled or in claiming process)");
+        
+        staking.status = StakingStatus.Cancelled;
+        IERC721(staking.token).transferFrom(address(this), msg.sender, staking.tokenId);
+
+
+        emit tokenCancelComplete(staking.token, staking.tokenId, staking.status, staking.StakingId);
+        return _StakedItem[stakingId];
+    }
+
+    function withdraw(uint amount) public onlyAdmin {
+        uint balance = IERC20(REWARDToken).balanceOf(address(this));
+        require(balance >= amount, "The balance of this contract is less than the amount");
+        IERC20(REWARDToken).transfer(msg.sender, amount);
+    }
+    //function to set reward rate per day
+    function setRewardRate(uint newRate) external onlyAdmin {
+        rate = newRate;
+    }
+
+    function getRewardRate() external view returns (uint) {
+        return rate;
+    }
+
+    function getTotalStaked() external view returns (uint) {
+        return _stakingId;
+    }
+    modifier onlyAdmin{
+        require(admin == msg.sender, "OA");
+        _;
+    }
+
 
     function setNewAdmin(address newAdd) external onlyAdmin{
         admin = newAdd;
