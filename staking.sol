@@ -283,6 +283,12 @@ contract StakeNFT {
     //mapping
     mapping(uint => Staking) private _StakedItem; 
 
+    //event
+    event tokenStaked(address indexed staker, address indexed token, uint token_id, StakingStatus status, uint StakingId);
+    event tokenClaimStatus(address indexed token, uint indexed token_id, StakingStatus indexed status, uint StakingId);
+    event tokenClaimComplete(address indexed token, uint indexed token_id, StakingStatus indexed status, uint StakingId);
+    event tokenCancelComplete(address indexed token, uint indexed token_id, StakingStatus indexed status, uint StakingId);
+
 
     //function to call another function
     function callStakeToken(address token, uint _tokenID) public {
@@ -307,6 +313,11 @@ contract StakeNFT {
         emit tokenStaked(msg.sender, staking.token, staking.tokenId, staking.status, currentStakingId);
         
         return _StakedItem[currentStakingId];
+    }
+
+    //function to view staked NFT
+    function viewStake(uint stakingId)public view returns (Staking memory) {
+        return _StakedItem[stakingId];
     }
 
 
