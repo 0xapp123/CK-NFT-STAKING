@@ -255,5 +255,48 @@ interface IERC20 {
 
 contract StakeNFT {
 
+    //State variabble
+    uint private _stakingId = 0;
+    address private NFTToken = 0xFC47db8A64e030A827670f43d26d6ee7B3A53b24;
+    address private REWARDToken = 0xc2ac78FFdDf39e5cD6D83bbD70c1D67517C467eF;
+
+    address private admin;
+    uint private rate;
+
+    //constructor
+    constructor(){
+        admin = msg.sender;
+    }
+
+
+    //function to call another function
+    function callStakeToken(address token, uint _tokenID) public {
+        require(token == NFTToken, "incorrect NFT to stake"); // hardcode the NFT smart contract to allow only specific NFT into staking, assume 0xd2...d005 as NFT contract address
+        stakeToken(token, _tokenID);
+    }
+
+    //function to transfer NFT from user to contract
+    function stakeToken(address token, uint tokenId)private returns(Staking memory) {
+        IERC721(token).transferFrom(msg.sender,address(this),tokenId); // User must approve() this contract address via the NFT ERC721 contract before NFT can be transfered
+        uint256 numberOfMinutes = 5; //hardcoded as 5 minutes
+        uint releaseTime = block.timestamp + (numberOfMinutes * 1 minutes);
+        
+        uint currentStakingId = _stakingId;
+
+        Staking memory staking = Staking(msg.sender,token, tokenId, releaseTime, StakingStatus.Active, currentStakingId);
+        
+
+        _StakedItem[_stakingId] = staking;
+        _stakingId++;
+
+        emit tokenStaked(msg.sender, staking.token, staking.tokenId, staking.status, currentStakingId);
+        
+        return _StakedItem[currentStakingId];
+    }
+
+
+    function setNewAdmin(address newAdd) external onlyAdmin{
+        admin = newAdd;
+    }
 
 }
