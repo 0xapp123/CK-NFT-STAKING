@@ -240,38 +240,71 @@ contract Dusty is Context {
         uint256 value
     );
 
-  using SafeMath for uint256;
+    using SafeMath for uint256;
 
-  mapping (address => uint256) private _balances;
+    mapping (address => uint256) private _balances;
 
-  mapping (address => mapping (address => uint256)) private _allowances;
+    mapping (address => mapping (address => uint256)) private _allowances;
 
-  uint256 public _decimals = 18;
-  string public _symbol = "DUNK";
-  string public _name = "DUNK Token";
+    uint256 public _decimals = 18;
+    string public _symbol = "DUNK";
+    string public _name = "DUNK Token";
 
-  uint256 public _totalSupply;
-  uint256 private MAX = 10 * 10**6 * 10**18;
-  uint256 public holders;
+    uint256 public _totalSupply;
+    uint256 private MAX = 100 * 10**6 * 10**18;
  
-//   address private TREASURY_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
-//   address private MARKETING_ADDRESS = 0x85ccA5E04F571Af81725F39D1f33B01CaD997aaC;
-  
-  
-  constructor()  {
+    address private FOUNDER_1_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
+    address private FOUNDER_2_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
+    address private FOUNDER_3_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
+    address private FOUNDER_4_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
 
-      deployTime = block.timestamp;
-      _balances[MARKETING_ADDRESS] = MAX_MARKET;
-      _balances[TREASURY_ADDRESS] = MAX_TREASURY;
-      
-      _totalSupply = MAX_MARKET + MAX_TREASURY ;
-
-      emit Transfer(address(0), MARKETING_ADDRESS, MAX_MARKET);
-      emit Transfer(address(0), TREASURY_ADDRESS, MAX_TREASURY);
-  }
+    mapping (address => uint256 ) private vestedTime;
+    
   
+    constructor()  {
 
-  /**
+        deployTime = block.timestamp;
+
+        _balances[FOUNDER_1_ADDRESS] = MAX * 1/100 /4;
+        _balances[FOUNDER_2_ADDRESS] = MAX * 1/100 /4;
+        _balances[FOUNDER_3_ADDRESS] = MAX * 1/100 /4;
+        _balances[FOUNDER_4_ADDRESS] = MAX * 1/100 /4;
+
+        vestedTime[FOUNDER_1_ADDRESS] = deployTime;
+        vestedTime[FOUNDER_2_ADDRESS] = deployTime;
+        vestedTime[FOUNDER_3_ADDRESS] = deployTime;
+        vestedTime[FOUNDER_4_ADDRESS] = deployTime;
+        
+        _totalSupply = MAX * 1/100;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////-------- Founder Distribution --------////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    function founderInvest() external {
+        require(msg.sender == FOUNDER_1_ADDRESS || msg.sender == FOUNDER_2_ADDRESS || msg.sender == FOUNDER_3_ADDRESS || msg.sender == FOUNDER_4_ADDRESS, "Not Founder");
+        require(vestedTime[msg.sender] + 30 days < block.timestamp, "Not yet vesting time");
+        
+        uint256 times_ = (block.timestamp - vestedTime[msg.sender])/(30 days); 
+        uint256 vestingAmount_ = times_ * MAX * 9/100 / 12 /4;
+        _mint(msg.sender, vestingAmount_);
+        
+        vestedTime[msg.sender] += times_ * 30 days;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////-------- Founder Distribution --------////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    function sendToStaking(address _stakingContract) external {
+        uint256 stakingAmount = MAX * 10/100;
+        _mint(msg.sender, _stakingContract);
+    }
+ 
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////-------- IERC-20 Interface --------//////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+     /**
      * @dev See `IERC20.totalSupply`.
      */
     function totalSupply() public view returns (uint256) {
@@ -499,4 +532,6 @@ contract Dusty is Context {
             _allowances[account][msg.sender].sub(amount)
         );
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 }
