@@ -264,7 +264,8 @@ contract Dusty is Context {
     address private FOUNDER_2_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
     address private FOUNDER_3_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
     address private FOUNDER_4_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
-    address private TREASURY_WALLET = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
+    address private TREASURY_WALLET   = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
+    address private MARKETING_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
 
     mapping (address => mapping ( TreasurySend => bool)) private checkTransfer;
     mapping (address => uint256 ) private vestedTime;
@@ -280,15 +281,16 @@ contract Dusty is Context {
         _balances[FOUNDER_2_ADDRESS] = MAX * 1/100 /4;
         _balances[FOUNDER_3_ADDRESS] = MAX * 1/100 /4;
         _balances[FOUNDER_4_ADDRESS] = MAX * 1/100 /4;
-        _balances[TREASURY_WALLET] = MAX * 20/100;
+        _balances[TREASURY_WALLET]   = MAX * 15/100;
+        _balances[MARKETING_ADDRESS] = MAX * 5/100;
 
         vestedTime[FOUNDER_1_ADDRESS] = deployTime;
         vestedTime[FOUNDER_2_ADDRESS] = deployTime;
         vestedTime[FOUNDER_3_ADDRESS] = deployTime;
         vestedTime[FOUNDER_4_ADDRESS] = deployTime;
         
-        _admin = msg.sender();
-        _totalSupply = MAX * 1/100;
+        _admin = msg.sender;
+        _totalSupply = MAX * (1+15+5)/100;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -296,7 +298,7 @@ contract Dusty is Context {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     function checkTx(address _receiver, uint256 _amount) external {
         TreasurySend memory tx = TreasurySend(_receiver, _amount);
-        checkTransfer[msg.sender()][tx] = true;
+        checkTransfer[msg.sender][tx] = true;
     }
     function transferFromTreasury(address to, uint256 amount) external {
         TreasurySend memory tx = TreasurySend(to, amount);
@@ -312,7 +314,6 @@ contract Dusty is Context {
     }
 
 
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////--------  Founder Distribution  --------//////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -321,7 +322,7 @@ contract Dusty is Context {
         require(vestedTime[msg.sender] + 30 days < block.timestamp, "Not yet vesting time");
         
         uint256 times_ = (block.timestamp - vestedTime[msg.sender])/(30 days); 
-        uint256 vestingAmount_ = times_ * MAX * 9/100 / 12 /4;
+        uint256 vestingAmount_ = times_ * MAX * 9/100 / 24 /4;
         _mint(msg.sender, vestingAmount_);
         
         vestedTime[msg.sender] += times_ * 30 days;
@@ -331,7 +332,7 @@ contract Dusty is Context {
     /////////////////////////--------  Staking Distribution  --------//////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     function sendToStaking(address _stakingContract) external {
-        uint256 stakingAmount = MAX * 10/100;
+        uint256 stakingAmount = MAX * 30/100;
         _mint(_stakingContract, stakingAmount);
     }
 
@@ -339,7 +340,7 @@ contract Dusty is Context {
     /////////////////////////--------  Liquidity Distribution  --------////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     function sendToLiquidity(address _liquidityAddress) external {
-        uint256 liquidityAmount = MAX * 10/100;
+        uint256 liquidityAmount = MAX * 15/100;
         _mint(_liquidityAddress, liquidityAmount);
     }
  
@@ -370,7 +371,7 @@ contract Dusty is Context {
      * - the caller must have a balance of at least `amount`.
      */
     function transfer(address recipient, uint256 amount) public returns (bool) {
-        if (msg.sender ==)
+        if (msg.sender == TREASURY_WALLET)
         _transfer(msg.sender, recipient, amount);
         return true;
     }
