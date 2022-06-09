@@ -251,14 +251,25 @@ contract Dusty is Context {
     string public _name = "DUNK Token";
 
     uint256 public _totalSupply;
+    
     uint256 private MAX = 100 * 10**6 * 10**18;
+
+    struct TreasurySend {
+        address reciever;
+        uint amount;
+    }
+    address private _admin;
  
     address private FOUNDER_1_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
     address private FOUNDER_2_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
     address private FOUNDER_3_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
     address private FOUNDER_4_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
+    address private TREASURY_WALLET = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
 
+    mapping (address => mapping ( TreasurySend => bool)) private checkTransfer;
     mapping (address => uint256 ) private vestedTime;
+    
+  
     
   
     constructor()  {
@@ -269,14 +280,38 @@ contract Dusty is Context {
         _balances[FOUNDER_2_ADDRESS] = MAX * 1/100 /4;
         _balances[FOUNDER_3_ADDRESS] = MAX * 1/100 /4;
         _balances[FOUNDER_4_ADDRESS] = MAX * 1/100 /4;
+        _balances[TREASURY_WALLET] = MAX * 20/100;
 
         vestedTime[FOUNDER_1_ADDRESS] = deployTime;
         vestedTime[FOUNDER_2_ADDRESS] = deployTime;
         vestedTime[FOUNDER_3_ADDRESS] = deployTime;
         vestedTime[FOUNDER_4_ADDRESS] = deployTime;
         
+        _admin = msg.sender();
         _totalSupply = MAX * 1/100;
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////--------  TREASURY Distribution  --------/////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    function checkTx(address _receiver, uint256 _amount) external {
+        TreasurySend memory tx = TreasurySend(_receiver, _amount);
+        checkTransfer[msg.sender()][tx] = true;
+    }
+    function transferFromTreasury(address to, uint256 amount) external {
+        TreasurySend memory tx = TreasurySend(to, amount);
+        uint checkNum;
+        if (checkTransfer[FOUNDER_1_ADDRESS][tx] == true) checkNum++;
+        if (checkTransfer[FOUNDER_2_ADDRESS][tx] == true) checkNum++;
+        if (checkTransfer[FOUNDER_3_ADDRESS][tx] == true) checkNum++;
+        if (checkTransfer[FOUNDER_4_ADDRESS][tx] == true) checkNum++;
+
+        if (checkNum > 3) {
+            _transfer(TREASURY_WALLET, to, amount);
+        }
+    }
+
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////--------  Founder Distribution  --------//////////////////////////////////
@@ -335,6 +370,7 @@ contract Dusty is Context {
      * - the caller must have a balance of at least `amount`.
      */
     function transfer(address recipient, uint256 amount) public returns (bool) {
+        if (msg.sender ==)
         _transfer(msg.sender, recipient, amount);
         return true;
     }
@@ -542,4 +578,10 @@ contract Dusty is Context {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    modifier onlyAdmin() {
+        require(owner() == _admin, "Ownable: caller is not the owner");
+        _;
+    }
+
 }
