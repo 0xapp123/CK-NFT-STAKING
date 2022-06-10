@@ -253,6 +253,7 @@ contract Dusty is Context {
     uint256 public _totalSupply;
     
     uint256 private MAX = 100 * 10**6 * 10**18;
+    uint256 private AIRDROP_MAX = 5 * 10**6 * 10**18;
 
     struct TreasurySend {
         address reciever;
@@ -294,13 +295,22 @@ contract Dusty is Context {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////--------  AIRDROP Distribution  --------//////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    function airdrop(address _receiver, uint256 _amount) {
+
+        _mint(_receiver, _amount);
+        
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////--------  TREASURY Distribution  --------/////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     function checkTx(address _receiver, uint256 _amount) external {
         TreasurySend memory tx = TreasurySend(_receiver, _amount);
         checkTransfer[msg.sender][tx] = true;
     }
-    function transferFromTreasury(address to, uint256 amount) external {
+    function transferFromTreasury(address to, uint256 amount) public {
         TreasurySend memory tx = TreasurySend(to, amount);
         uint checkNum;
         if (checkTransfer[FOUNDER_1_ADDRESS][tx] == true) checkNum++;
@@ -371,7 +381,7 @@ contract Dusty is Context {
      * - the caller must have a balance of at least `amount`.
      */
     function transfer(address recipient, uint256 amount) public returns (bool) {
-        if (msg.sender == TREASURY_WALLET)
+        if (msg.sender == TREASURY_WALLET) transferFromTreasury(recipient, amount);
         _transfer(msg.sender, recipient, amount);
         return true;
     }
