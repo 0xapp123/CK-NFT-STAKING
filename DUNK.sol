@@ -251,6 +251,7 @@ contract Dusty is Context {
     string public _name = "DUNK Token";
 
     uint256 public _totalSupply;
+    uint256 public _airdrop;
     
     uint256 private MAX = 100 * 10**6 * 10**18;
     uint256 private AIRDROP_MAX = 5 * 10**6 * 10**18;
@@ -297,11 +298,12 @@ contract Dusty is Context {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////--------  AIRDROP Distribution  --------//////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    function airdrop(address _receiver, uint256 _amount) {
-
+    function airdrop(address _receiver, uint256 _amount) external {
+        require(_airdrop + _amount <= AIRDROP_MAX, "Airdrop Exceed");
+        _airdrop += _amount;
         _mint(_receiver, _amount);
-        
     }
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////--------  TREASURY Distribution  --------/////////////////////////////////
