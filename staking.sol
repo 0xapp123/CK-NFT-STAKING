@@ -257,8 +257,8 @@ contract StakeNFT {
 
     //State variabble
     uint private _stakingId = 0;
-    address private NFTToken = 0xFC47db8A64e030A827670f43d26d6ee7B3A53b24;
-    address private REWARDToken = 0xc2ac78FFdDf39e5cD6D83bbD70c1D67517C467eF;
+    address private NFTToken = 0xFC7FedA4B25144d751272b6F6F6E2725Ffd51a13;
+    address private REWARDToken = 0xBE2095Dd1989942ef81610BAC0fA258b35362a8c;
 
     address private admin;
     uint private rate;
@@ -268,129 +268,128 @@ contract StakeNFT {
         admin = msg.sender;
     }
 
-    enum StakingStatus {Active, Claimable, Claimed, Cancelled}
+    //enumerator
+    enum StakingStatus {Active,  Claimed, Cancelled}
 
     //structs
     struct Staking {
         address staker;    
         address token;
-        uint tokenId;
-        uint releaseTime;
+        uint256 tokenId;
+        uint256 releaseTime;
         StakingStatus status;
-        uint StakingId;
+        uint256 StakingId;
     }
 
     //mapping
-    mapping(uint => Staking) private _StakedItem; 
+    mapping(uint256 => Staking) private _StakedItem; 
+
 
     //event
-    event tokenStaked(address indexed staker, address indexed token, uint token_id, StakingStatus status, uint StakingId);
-    event tokenClaimStatus(address indexed token, uint indexed token_id, StakingStatus indexed status, uint StakingId);
-    event tokenClaimComplete(address indexed token, uint indexed token_id, StakingStatus indexed status, uint StakingId);
-    event tokenCancelComplete(address indexed token, uint indexed token_id, StakingStatus indexed status, uint StakingId);
-
+    event tokenStaked(address indexed staker, address indexed token, uint256 token_id, StakingStatus status, uint256 StakingId);
+    event tokenClaimStatus(address indexed token, uint256 indexed token_id, StakingStatus indexed status, uint256 StakingId);
+    event tokenClaimComplete(address indexed token, uint256 indexed token_id, StakingStatus indexed status, uint256 StakingId);
+    event tokenCancelComplete(address indexed token, uint256 indexed token_id, StakingStatus indexed status, uint256 StakingId);
 
     //function to call another function
-    function callStakeToken(address token, uint _tokenID) public {
+    function callStakeToken(address token, uint256[] memory _tokenID) public {
         require(token == NFTToken, "incorrect NFT to stake"); // hardcode the NFT smart contract to allow only specific NFT into staking, assume 0xd2...d005 as NFT contract address
-        stakeToken(token, _tokenID);
+        stakeToken(_tokenID);
     }
 
     //function to transfer NFT from user to contract
-    function stakeToken(address token, uint tokenId)private returns(Staking memory) {
-        IERC721(token).transferFrom(msg.sender,address(this),tokenId); // User must approve() this contract address via the NFT ERC721 contract before NFT can be transfered
-        uint256 numberOfMinutes = 5; //hardcoded as 5 minutes
-        uint releaseTime = block.timestamp + (numberOfMinutes * 1 minutes);
-        
-        uint currentStakingId = _stakingId;
+    function stakeToken(uint256[] memory tokenId) private {
+        uint256 releaseTime = block.timestamp;
 
-        Staking memory staking = Staking(msg.sender,token, tokenId, releaseTime, StakingStatus.Active, currentStakingId);
-        
+        for (uint256 i = 0; i < tokenId.length; i++) {
+            IERC721(NFTToken).transferFrom(msg.sender,address(this),tokenId[i]); // User must approve() this contract address via the NFT ERC721 contract before NFT can be transfered
+            
+            uint256 currentStakingId = _stakingId;
 
-        _StakedItem[_stakingId] = staking;
-        _stakingId++;
-
-        emit tokenStaked(msg.sender, staking.token, staking.tokenId, staking.status, currentStakingId);
+            Staking memory staking = Staking(msg.sender, NFTToken, tokenId[i], releaseTime, StakingStatus.Active, currentStakingId);
+            
+            _StakedItem[_stakingId] = staking;
+            _stakingId++;
+            
+            emit tokenStaked(msg.sender, staking.token, staking.tokenId, staking.status, currentStakingId);
+        }
         
-        return _StakedItem[currentStakingId];
     }
 
     //function to view staked NFT
-    function viewStake(uint stakingId)public view returns (Staking memory) {
+    function viewStake(uint256 stakingId)public view returns (Staking memory) {
         return _StakedItem[stakingId];
     }
 
-     //function to check NFT stake duration status 
-    function checkStake(uint stakingId, address staker)public returns (Staking memory) {
+    //function to check NFT stake duration status 
+    function checkStake(uint256 stakingId, address staker) public returns (Staking memory) {
         Staking storage staking = _StakedItem[stakingId];
         
         require(staker == msg.sender,"You cannot check this staking as it is not listed under this address");
         require(staking.status == StakingStatus.Active,"Staking is not active or claimed");
-        if (block.timestamp >= staking.releaseTime) {
-            staking.status = StakingStatus.Claimable;
-        }
+        
 
         emit tokenClaimStatus(staking.token, staking.tokenId, staking.status, staking.StakingId);
         return _StakedItem[stakingId];
 
- 
     }
 
     //function to claim reward token if NFT stake duration is completed
-    function claimStake(uint stakingId) public returns(Staking memory){
-        Staking storage staking = _StakedItem[stakingId];
-        
-        require(staking.staker == msg.sender,"You cannot cancel this staking as it is not listed under this address");
-        require(staking.status == StakingStatus.Claimable,"Your reward is either not claimable yet or has been claimed");
+    function claimReward(uint256[] memory stakingId) public {
+        uint256 totalAmount;
 
-        uint amount = rate * (block.timestamp - staking.releaseTime) / 25 days;
+        for (uint256 i = 0; i < stakingId.length; i++) {
+            Staking storage staking = _StakedItem[stakingId[i]];
+            
+            require(staking.staker == msg.sender,"You cannot cancel this staking as it is not listed under this address");
+            require(staking.status == StakingStatus.Active,"Your reward is either not claimable yet or has been claimed");
 
-        IERC20(REWARDToken).transfer(msg.sender, amount);
+            totalAmount += rate * (block.timestamp - staking.releaseTime) / 25 days;
+            staking.releaseTime = block.timestamp;
 
-        staking.status = StakingStatus.Claimed;
-        IERC721(staking.token).transferFrom(address(this), msg.sender, staking.tokenId);
+            emit tokenClaimComplete(staking.token, staking.tokenId, staking.status, staking.StakingId);
+        }
 
-        emit tokenClaimComplete(staking.token, staking.tokenId, staking.status, staking.StakingId);
-        
-        return _StakedItem[stakingId];
+        IERC20(REWARDToken).transfer(msg.sender, totalAmount);
     }
+    
 
     //function to cancel NFT stake
-    function cancelStake(uint stakingId) public returns (Staking memory) {
-        Staking storage staking = _StakedItem[stakingId];
-        require(staking.staker == msg.sender,"You cannot cancel this staking as it is not listed under this address");
-        require(staking.status == StakingStatus.Active,"Staking is either not active (Cancalled or in claiming process)");
-        
-        staking.status = StakingStatus.Cancelled;
-        IERC721(staking.token).transferFrom(address(this), msg.sender, staking.tokenId);
-
-
-        emit tokenCancelComplete(staking.token, staking.tokenId, staking.status, staking.StakingId);
-        return _StakedItem[stakingId];
+    function unStake(uint256[] memory stakingId) public  {
+        uint256 totalAmount;
+        for (uint256 i = 0; i < stakingId.length; i++) {
+            Staking storage staking = _StakedItem[stakingId[i]];
+            require(staking.staker == msg.sender,"You cannot cancel this staking as it is not listed under this address");
+            require(staking.status == StakingStatus.Active,"Staking is either not active (Cancalled or in claiming process)");
+            
+            totalAmount += rate * (block.timestamp - staking.releaseTime) / 25 days;
+            staking.status = StakingStatus.Cancelled;
+            IERC721(staking.token).transferFrom(address(this), msg.sender, staking.tokenId);
+            emit tokenCancelComplete(staking.token, staking.tokenId, staking.status, staking.StakingId);
+        }
     }
 
-    function withdraw(uint amount) public onlyAdmin {
-        uint balance = IERC20(REWARDToken).balanceOf(address(this));
+    function withdraw(uint256 amount) public onlyAdmin {
+        uint256 balance = IERC20(REWARDToken).balanceOf(address(this));
         require(balance >= amount, "The balance of this contract is less than the amount");
         IERC20(REWARDToken).transfer(msg.sender, amount);
     }
     //function to set reward rate per day
-    function setRewardRate(uint newRate) external onlyAdmin {
+    function setRewardRate(uint256 newRate) external onlyAdmin {
         rate = newRate;
     }
 
-    function getRewardRate() external view returns (uint) {
+    function getRewardRate() external view returns (uint256) {
         return rate;
     }
 
-    function getTotalStaked() external view returns (uint) {
+    function getTotalStaked() external view returns (uint256) {
         return _stakingId;
     }
     modifier onlyAdmin{
         require(admin == msg.sender, "OA");
         _;
     }
-
 
     function setNewAdmin(address newAdd) external onlyAdmin{
         admin = newAdd;

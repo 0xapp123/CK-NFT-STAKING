@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicense
-pragma solidity 0.8.9;
+pragma solidity 0.8.7;
 
 // import "@openzeppelin/contracts/access/Ownable.sol";
 // import "@openzeppelin/contracts/utils/Context.sol";
@@ -227,7 +227,38 @@ library SafeMath {
     }
 }
 
-contract Dusty is Context {
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+interface IERC165 {
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+}
+
+/**
+ * @dev Required interface of an ERC721 compliant contract.
+ */
+interface IERC721 is IERC165 {
+    
+    /**
+     * @dev Returns a token ID owned by `owner` at a given `index` of its token list.
+     * Use along with {balanceOf} to enumerate all of ``owner``'s tokens.
+     */
+    function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256);
+
+    /**
+     * @dev Returns the number of tokens in ``owner``'s account.
+     */
+    function balanceOf(address owner) external view returns (uint256 balance);
+
+}
+
+contract Dunk is Context{
 
     event Transfer(
         address indexed from, 
@@ -253,15 +284,15 @@ contract Dusty is Context {
     uint256 public _totalSupply;
     uint256 public _airdrop;
     uint256 public _rosterMint;
+    uint256 public deployTime;
+    uint256 public startTime;
+    uint256 public endTime;
+    uint256 public rosterReward;
     
     uint256 private MAX = 100 * 10**6 * 10**18;
     uint256 private AIRDROP_MAX = 5 * 10**6 * 10**18;
     uint256 private ROSTER_MAX = 20 * 10**6 * 10**18;
 
-    struct TreasurySend {
-        address reciever;
-        uint amount;
-    }
     address private _admin;
  
     address private FOUNDER_1_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
@@ -271,11 +302,12 @@ contract Dusty is Context {
     address private TREASURY_WALLET   = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
     address private MARKETING_ADDRESS = 0xAe57528f58b599A4B190C0eA9f57AE7862098796;
 
-    mapping (address => mapping ( TreasurySend => bool)) private checkTransfer;
+    address public RUMBLE_KONG_NFT = 0xC15f3087363a772C329859E38023910Db75F8557;
+
+    mapping (address => mapping ( address => mapping (uint256 => bool))) private checkTransfer;
+    mapping (address => mapping (uint256 => bool)) completeTransfer;
     mapping (address => uint256 ) private vestedTime;
-    
-  
-    
+    mapping (uint256 => bool) private isInvest;
   
     constructor()  {
 
@@ -295,15 +327,43 @@ contract Dusty is Context {
         
         _admin = msg.sender;
         _totalSupply = MAX * (1+15+5)/100;
+
+        emit Transfer(address(0), FOUNDER_1_ADDRESS,  MAX * 1/100 /4);
+        emit Transfer(address(0), FOUNDER_2_ADDRESS,  MAX * 1/100 /4);
+        emit Transfer(address(0), FOUNDER_3_ADDRESS,  MAX * 1/100 /4);
+        emit Transfer(address(0), FOUNDER_4_ADDRESS,  MAX * 1/100 /4);
+        emit Transfer(address(0), TREASURY_WALLET,  MAX * 15/100);
+        emit Transfer(address(0), MARKETING_ADDRESS,  MAX * 5/100);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////--------  Rostered Kongs Distribution  --------////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    function rosterTransfer(address _receiver, uint256 _amount) external {
-        require(_rosterMint + _amount <= ROSTER_MAX, "Roster Kongs Exceed");
-        _rosterMint += _amount;
-        _mint(_receiver, _amount);
+    function setSeason(uint256 startTs, uint256 endTs, uint256[] memory tokenIds, uint256 amount) external onlyAdmin {
+        startTime = startTs;
+        endTime = endTs;
+        for (uint i = 0; i < tokenIds.length; i++) {
+            isInvest[tokenIds[i]] = true;
+        }
+        rosterReward = amount;
+    }
+
+    function requestInvest() external {
+        uint256 amount = IERC721(RUMBLE_KONG_NFT).balanceOf(msg.sender);
+        bool investable;
+        for (uint i = 0; i < amount; i++) {
+            uint256 tokenId = IERC721(RUMBLE_KONG_NFT).tokenOfOwnerByIndex(msg.sender, i);
+            if (isInvest[tokenId] == true) {
+                investable = true;
+                break;
+            }
+        }
+
+        require(investable == true, "Not investable!");
+
+        uint256 nowTs = block.timestamp;
+        require(nowTs > startTime && nowTs < endTime, "Not Vesting Period");
+        _mint(msg.sender, rosterReward);
     }
 
 
@@ -311,16 +371,19 @@ contract Dusty is Context {
     /////////////////////////--------  TREASURY Distribution  --------/////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     function checkTx(address _receiver, uint256 _amount) external {
-        TreasurySend memory tx = TreasurySend(_receiver, _amount);
-        checkTransfer[msg.sender][tx] = true;
+        require(msg.sender == FOUNDER_1_ADDRESS || msg.sender == FOUNDER_2_ADDRESS || msg.sender == FOUNDER_3_ADDRESS || msg.sender == FOUNDER_4_ADDRESS, "Not Founder");
+        checkTransfer[msg.sender][_receiver][_amount] = true;
     }
     function transferFromTreasury(address to, uint256 amount) public {
-        TreasurySend memory tx = TreasurySend(to, amount);
+        require(msg.sender == FOUNDER_1_ADDRESS || msg.sender == FOUNDER_2_ADDRESS || msg.sender == FOUNDER_3_ADDRESS || msg.sender == FOUNDER_4_ADDRESS, "Not Founder");
+    
+        require(completeTransfer[to][amount] == false, "Completed Transfer!");
+
         uint checkNum;
-        if (checkTransfer[FOUNDER_1_ADDRESS][tx] == true) checkNum++;
-        if (checkTransfer[FOUNDER_2_ADDRESS][tx] == true) checkNum++;
-        if (checkTransfer[FOUNDER_3_ADDRESS][tx] == true) checkNum++;
-        if (checkTransfer[FOUNDER_4_ADDRESS][tx] == true) checkNum++;
+        if (checkTransfer[FOUNDER_1_ADDRESS][to][amount] == true) checkNum++;
+        if (checkTransfer[FOUNDER_2_ADDRESS][to][amount] == true) checkNum++;
+        if (checkTransfer[FOUNDER_3_ADDRESS][to][amount] == true) checkNum++;
+        if (checkTransfer[FOUNDER_4_ADDRESS][to][amount] == true) checkNum++;
 
         if (checkNum > 3) {
             _transfer(TREASURY_WALLET, to, amount);
@@ -331,7 +394,7 @@ contract Dusty is Context {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////--------  Staking Distribution  --------//////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    function sendToStaking(address _stakingContract) external {
+    function sendToStaking(address _stakingContract) external onlyAdmin{
         uint256 stakingAmount = MAX * 30/100;
         _mint(_stakingContract, stakingAmount);
     }
@@ -340,7 +403,7 @@ contract Dusty is Context {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////--------  Liquidity Distribution  --------////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    function sendToLiquidity(address _liquidityAddress) external {
+    function sendToLiquidity(address _liquidityAddress) external onlyAdmin{
         uint256 liquidityAmount = MAX * 15/100;
         _mint(_liquidityAddress, liquidityAmount);
     }
@@ -348,7 +411,7 @@ contract Dusty is Context {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////--------  AIRDROP Distribution  --------//////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    function airdrop(address _receiver, uint256 _amount) external {
+    function airdrop(address _receiver, uint256 _amount) external onlyAdmin{
         require(_airdrop + _amount <= AIRDROP_MAX, "Airdrop Exceed");
         _airdrop += _amount;
         _mint(_receiver, _amount);
@@ -371,11 +434,44 @@ contract Dusty is Context {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////--------  IERC-20 Interface  --------////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @dev Returns the name of the token.
+     */
+    function name() public view returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * @dev Returns the symbol of the token, usually a shorter version of the
+     * name.
+     */
+    function symbol() public view returns (string memory) {
+        return _symbol;
+    }
+
      /**
      * @dev See `IERC20.totalSupply`.
      */
     function totalSupply() public view returns (uint256) {
         return _totalSupply;
+    }
+
+  /**
+     * @dev Returns the number of decimals used to get its user representation.
+     * For example, if `decimals` equals `2`, a balance of `505` tokens should
+     * be displayed to a user as `5.05` (`505 / 10 ** 2`).
+     *
+     * Tokens usually opt for a value of 18, imitating the relationship between
+     * Ether and Wei. This is the value {ERC20} uses, unless this function is
+     * overridden;
+     *
+     * NOTE: This information is only used for _display_ purposes: it in
+     * no way affects any of the arithmetic of the contract, including
+     * {IERC20-balanceOf} and {IERC20-transfer}.
+     */
+    function decimals() public view returns (uint256) {
+        return _decimals;
     }
 
     /**
@@ -604,8 +700,12 @@ contract Dusty is Context {
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     modifier onlyAdmin() {
-        require(owner() == _admin, "Ownable: caller is not the owner");
+        require(msg.sender == _admin, "Ownable: caller is not the owner");
         _;
+    }
+
+    function setAdmin(address _newAddress) external onlyAdmin {
+        _admin = _newAddress;
     }
 
 }
